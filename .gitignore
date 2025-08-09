@@ -4,10 +4,42 @@ node_modules
 dist
 dist_electron
 
+# Environment files
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# Security
+*.key
+*.pem
+*.crt
+
+# Electron build
+/release/
+/build/
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+.env/
+.venv/
+venv/
+ENV/
+env.bak/
+venv.bak/
+
 # 参考项目
 proactive/
 
 # 文档
 docs/
+.vibedev/
 
 .DS_Store
+.claude/agents/ui-designer.md

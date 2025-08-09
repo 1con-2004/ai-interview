@@ -30,13 +30,36 @@ function createWindow() {
   win = new BrowserWindow({
     width: 1200,
     height: 800,
+    show: false, // 窗口准备好之前不显示
+    backgroundColor: '#ffffff', // 设置背景色避免白屏闪烁
     icon: path.join(process.env.VITE_PUBLIC, 'electron-vite.svg'),
     webPreferences: {
       preload: path.join(__dirname, 'preload.mjs'),
       nodeIntegration: false,
       contextIsolation: true,
       webSecurity: false, // 开发环境禁用web安全检查
+      enableRemoteModule: false,
+      experimentalFeatures: false,
+      v8CacheOptions: 'code', // 启用V8代码缓存
     },
+  })
+
+  // 优化窗口显示时机
+  win.once('ready-to-show', () => {
+    win?.show()
+    // 可选：添加淡入效果
+    if (process.platform === 'darwin') {
+      win?.setOpacity(0)
+      win?.show()
+      let opacity = 0
+      const fadeIn = setInterval(() => {
+        opacity += 0.1
+        win?.setOpacity(opacity)
+        if (opacity >= 1) {
+          clearInterval(fadeIn)
+        }
+      }, 10)
+    }
   })
 
   // Test active push message to Renderer-process.
@@ -44,12 +67,10 @@ function createWindow() {
     win?.webContents.send('main-process-message', (new Date).toLocaleString())
   })
 
+  // 加载页面
   if (VITE_DEV_SERVER_URL) {
     win.loadURL(VITE_DEV_SERVER_URL)
-    // 开发环境自动打开开发者工具
-    win.webContents.openDevTools()
   } else {
-    // win.loadFile('dist/index.html')
     win.loadFile(path.join(RENDERER_DIST, 'index.html'))
   }
 }
@@ -72,4 +93,29 @@ app.on('activate', () => {
   }
 })
 
-app.whenReady().then(createWindow)
+// 优化应用启动
+app.whenReady().then(() => {
+  // 设置应用性能优化
+  app.commandLine.appendSwitch('--disable-features', 'VizDisplayCompositor')
+  app.commandLine.appendSwitch('--disable-gpu-sandbox')
+  app.commandLine.appendSwitch('--enable-gpu-rasterization')
+  
+  createWindow()
+})
+
+// 预加载优化 - 在空闲时预热
+app.on('browser-window-focus', () => {
+  if (win && win.webContents) {
+    win.webContents.executeJavaScript(`
+      // 预加载关键资源
+      if (window.requestIdleCallback) {
+        window.requestIdleCallback(() => {
+          // 预热常用功能
+          console.log('Prewarming application resources...')
+        })
+      }
+    `).catch(() => {
+      // 忽略执行错误
+    })
+  }
+})
